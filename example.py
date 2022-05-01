@@ -5,6 +5,7 @@ import aiohttp
 
 from opendata_transport import OpendataTransport
 from opendata_transport import OpendataTransportStationboard
+from opendata_transport import Transportations, Type
 
 
 async def main():
@@ -28,7 +29,9 @@ async def main():
         print()
 
         # Get all connections of a station
-        stationboard = OpendataTransportStationboard("8591355", session, 4)
+        stationboard = OpendataTransportStationboard("Romont FR", session, 10)
+        stationboard.set_transportations([Transportations.TRAIN, Transportations.BUS])
+        stationboard.set_type(Type.ARRIVAL)
         await stationboard.async_get_data()
 
         # Print the journey data

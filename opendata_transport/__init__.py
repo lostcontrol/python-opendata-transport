@@ -1,6 +1,8 @@
 """Wrapper to get connection details from Opendata Transport."""
 import asyncio
+from enum import Enum
 import logging
+from typing import Sequence
 
 import aiohttp
 import urllib.parse
@@ -11,16 +13,36 @@ _LOGGER = logging.getLogger(__name__)
 _RESOURCE_URL = "http://transport.opendata.ch/v1/"
 
 
+class Transportations(Enum):
+    TRAIN = "train"
+    TRAM = "tram"
+    SHIP = "ship"
+    BUS = "bus"
+    CABLEWAY = "cableway"
+
+
+class Type(Enum):
+    DEPARTURE = "departure"
+    ARRIVAL = "arrival"
+
+
 class OpendataTransportBase(object):
     """Representation of the Opendata Transport base class"""
 
     def __init__(self, session):
         self._session = session
+        self.__transportation = None
 
-    @staticmethod
-    def get_url(resource, params):
+    def set_transportations(self, transportations: Sequence[Transportations]) -> None:
+        self.__transportation = transportations
+
+    def get_url(self, resource, params):
         """Generate the URL for the request."""
         param = urllib.parse.urlencode(params)
+        if self.__transportation:
+            param += "&" + "&".join(
+                [f"transportations[]={t.value}" for t in self.__transportation]
+            )
         url = "{resource_url}{resource}?{param}".format(
             resource_url=_RESOURCE_URL, resource=resource, param=param
         )
@@ -37,6 +59,10 @@ class OpendataTransportStationboard(OpendataTransportBase):
         self.limit = limit
         self.from_name = self.from_id = self.to_name = self.to_id = None
         self.journeys = []
+        self.type = Type.DEPARTURE
+
+    def set_type(self, type: Type) -> None:
+        self.type = type
 
     @staticmethod
     def get_journey(journey):
@@ -53,7 +79,7 @@ class OpendataTransportStationboard(OpendataTransportBase):
 
     async def __async_get_data(self, station):
         """Retrieve the data for the station."""
-        params = {"limit": self.limit}
+        params = {"limit": self.limit, "type": self.type.value}
         if str.isdigit(station):
             params["id"] = station
         else:
